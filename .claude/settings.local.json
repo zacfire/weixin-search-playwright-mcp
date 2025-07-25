@@ -6,7 +6,11 @@
       "Bash(pip install:*)",
       "mcp__playwright-mcp__browser_navigate",
       "mcp__playwright-mcp__browser_evaluate",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__sequential-thinking-mcp__sequentialthinking",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
