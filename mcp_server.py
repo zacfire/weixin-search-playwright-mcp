@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 微信文章搜索 MCP 服务器
+符合标准 MCP 协议
 """
 
 import asyncio
+import json
 import sys
 import os
-import json
 from typing import Any, Dict, List
 
 # 添加 app 目录到路径
@@ -16,31 +17,102 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 from search.playwright_search import WeChatArticleSearcher
 
 
-class WeChatMCPServer:
-    """微信文章搜索 MCP 服务器"""
+class MCPServer:
+    """标准 MCP 服务器实现"""
     
     def __init__(self):
         self.searcher = None
+        self.request_id = 0
         
     async def start(self):
         """启动服务器"""
         self.searcher = WeChatArticleSearcher()
         await self.searcher.__aenter__()
+        print("微信文章搜索 MCP 服务器已启动", file=sys.stderr)
         
     async def stop(self):
         """停止服务器"""
         if self.searcher:
             await self.searcher.__aexit__(None, None, None)
             
-    async def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def send_response(self, request_id: int, result: Any = None, error: Any = None):
+        """发送响应"""
+        response = {
+            "jsonrpc": "2.0",
+            "id": request_id
+        }
+        
+        if error:
+            response["error"] = error
+        else:
+            response["result"] = result
+            
+        print(json.dumps(response, ensure_ascii=False))
+        sys.stdout.flush()
+        
+    async def handle_initialize(self, request_id: int, params: Dict[str, Any]):
+        """处理初始化请求"""
+        result = {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {
+                "tools": {}
+            },
+            "serverInfo": {
+                "name": "wechat-article-search",
+                "version": "1.0.0"
+            }
+        }
+        self.send_response(request_id, result)
+        
+    async def handle_list_tools(self, request_id: int, params: Dict[str, Any]):
+        """处理工具列表请求"""
+        tools = [{
+            "name": "search_wechat_articles",
+            "description": "搜索微信公众号文章",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "搜索关键词",
+                        "minLength": 1,
+                        "maxLength": 100
+                    },
+                    "max_results": {
+                        "type": "integer", 
+                        "description": "最大结果数量",
+                        "default": 5,
+                        "minimum": 1,
+                        "maximum": 20
+                    },
+                    "time_filter": {
+                        "type": "string",
+                        "description": "时间筛选",
+                        "enum": ["day", "week", "month", "year"]
+                    }
+                },
+                "required": ["query"]
+            }
+        }]
+        
+        self.send_response(request_id, {"tools": tools})
+        
+    async def handle_call_tool(self, request_id: int, params: Dict[str, Any]):
         """处理工具调用"""
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {})
+        
         if tool_name == "search_wechat_articles":
             query = arguments.get("query", "")
             max_results = arguments.get("max_results", 5)
             time_filter = arguments.get("time_filter")
             
             if not query:
-                return {"error": "缺少搜索关键词"}
+                self.send_response(request_id, None, {
+                    "code": -32602,
+                    "message": "缺少搜索关键词"
+                })
+                return
                 
             try:
                 articles = await self.searcher.search_articles(
@@ -49,71 +121,92 @@ class WeChatMCPServer:
                     time_filter=time_filter
                 )
                 
-                return {
-                    "query": query,
-                    "total_count": len(articles),
-                    "articles": articles,
-                    "success": True
-                }
+                # 格式化结果
+                result_text = f"找到 {len(articles)} 篇关于「{query}」的微信文章：\n\n"
+                
+                for i, article in enumerate(articles, 1):
+                    result_text += f"{i}. **{article['title']}**\n"
+                    result_text += f"   来源：{article['source']}\n"
+                    result_text += f"   时间：{article['date']}\n"
+                    result_text += f"   摘要：{article['snippet'][:100]}...\n"
+                    result_text += f"   链接：{article['url']}\n\n"
+                
+                self.send_response(request_id, {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": result_text
+                        }
+                    ]
+                })
                 
             except Exception as e:
-                return {
-                    "error": f"搜索失败: {str(e)}",
-                    "success": False
-                }
+                print(f"搜索错误: {str(e)}", file=sys.stderr)
+                self.send_response(request_id, None, {
+                    "code": -32603,
+                    "message": f"搜索失败: {str(e)}"
+                })
         else:
-            return {"error": f"未知工具: {tool_name}"}
+            self.send_response(request_id, None, {
+                "code": -32601,
+                "message": f"未知工具: {tool_name}"
+            })
+            
+    async def handle_request(self, message: Dict[str, Any]):
+        """处理请求"""
+        method = message.get("method")
+        request_id = message.get("id")
+        params = message.get("params", {})
+        
+        if method == "initialize":
+            await self.handle_initialize(request_id, params)
+        elif method == "tools/list":
+            await self.handle_list_tools(request_id, params)
+        elif method == "tools/call":
+            await self.handle_call_tool(request_id, params)
+        else:
+            self.send_response(request_id, None, {
+                "code": -32601,
+                "message": f"未知方法: {method}"
+            })
 
 
 async def main():
-    """MCP 服务器主函数"""
-    server = WeChatMCPServer()
+    """主函数"""
+    server = MCPServer()
     
     try:
         await server.start()
-        print("微信文章搜索 MCP 服务器已启动", file=sys.stderr)
         
-        # 读取 stdin 的 MCP 协议消息
+        # 处理 stdin 输入
         while True:
             try:
-                line = input()
+                line = await asyncio.get_event_loop().run_in_executor(
+                    None, sys.stdin.readline
+                )
+                
                 if not line:
                     break
                     
-                message = json.loads(line)
-                
-                # 处理工具调用
-                if message.get("method") == "tools/call":
-                    params = message.get("params", {})
-                    tool_name = params.get("name")
-                    arguments = params.get("arguments", {})
+                line = line.strip()
+                if not line:
+                    continue
                     
-                    result = await server.handle_tool_call(tool_name, arguments)
-                    
-                    response = {
-                        "jsonrpc": "2.0",
-                        "id": message.get("id"),
-                        "result": {
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": json.dumps(result, ensure_ascii=False, indent=2)
-                                }
-                            ]
-                        }
-                    }
-                    
-                    print(json.dumps(response, ensure_ascii=False))
+                try:
+                    message = json.loads(line)
+                    await server.handle_request(message)
+                except json.JSONDecodeError as e:
+                    print(f"JSON 解析错误: {e}", file=sys.stderr)
                     
             except EOFError:
                 break
-            except json.JSONDecodeError:
-                continue
             except Exception as e:
-                print(f"处理消息错误: {e}", file=sys.stderr)
+                print(f"处理请求错误: {e}", file=sys.stderr)
                 
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        print(f"服务器错误: {e}", file=sys.stderr)
     finally:
         await server.stop()
         print("MCP 服务器已停止", file=sys.stderr)
