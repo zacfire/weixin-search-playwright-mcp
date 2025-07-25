@@ -1,0 +1,37 @@
+{
+  "name": "wechat-article-search",
+  "description": "基于Playwright的微信文章搜索工具",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "search_wechat_articles",
+      "description": "搜索微信公众号文章",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "搜索关键词",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "max_results": {
+            "type": "integer", 
+            "description": "最大结果数量",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 20
+          },
+          "time_filter": {
+            "type": "string",
+            "description": "时间筛选",
+            "enum": ["day", "week", "month", "year"],
+            "default": null
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  ],
+  "implementation": "playwright-mcp"
+}

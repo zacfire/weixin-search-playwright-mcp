@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信文章搜索 MCP Pro</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+        }
+
+        .status-indicator.warning {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+        }
+
+        .status-indicator.error {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .search-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        .search-select {
+            padding: 15px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .results-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .results-meta {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .article-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .article-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .article-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .article-title a {
+            color: #1f2937;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .article-title a:hover {
+            color: #667eea;
+        }
+
+        .article-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .article-source {
+            background: #f3f4f6;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .article-snippet {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: #f9fafb;
+            padding: 15px 20px;
+            border-radius: 12px;
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-input {
+                min-width: auto;
+            }
+
+            .search-options {
+                justify-content: space-between;
+            }
+
+            .results-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .article-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .stats-row {
+                flex-direction: column;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="header">
+            <h1>🔍 微信文章搜索 MCP Pro</h1>
+            <p class="subtitle">基于Playwright的高性能微信文章搜索服务</p>
+        </div>
+
+        <!-- 服务状态 -->
+        <div class="status-card">
+            <div class="status-row">
+                <div class="status-item">
+                    <div class="status-indicator" id="service-status"></div>
+                    <span>服务状态: <span id="service-text">检查中...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="browser-status"></div>
+                    <span>浏览器: <span id="browser-text">检查中...</span></span>
+                </div>
+                <div class="status-item">
+                    <span>服务地址: <strong id="server-url"></strong></span>
+                </div>
+                <div class="status-item">
+                    <span>版本: <strong>2.0.0</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索区域 -->
+        <div class="search-card">
+            <form class="search-form" id="search-form">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="query-input" 
+                    placeholder="输入搜索关键词，如：人工智能、上下文工程..."
+                    required
+                >
+                <div class="search-options">
+                    <select class="search-select" id="max-results">
+                        <option value="5">5条结果</option>
+                        <option value="10" selected>10条结果</option>
+                        <option value="15">15条结果</option>
+                        <option value="20">20条结果</option>
+                        <option value="30">30条结果</option>
+                    </select>
+                    <select class="search-select" id="time-filter">
+                        <option value="">全部时间</option>
+                        <option value="day">最近一天</option>
+                        <option value="week">最近一周</option>
+                        <option value="month">最近一月</option>
+                        <option value="year">最近一年</option>
+                    </select>
+                    <button type="submit" class="search-btn" id="search-btn">
+                        🔍 搜索
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 搜索结果 -->
+        <div class="results-card" id="results-card" style="display: none;">
+            <div class="results-header">
+                <h2 class="results-title" id="results-title">搜索结果</h2>
+                <div class="results-meta" id="results-meta"></div>
+            </div>
+            <div id="results-container"></div>
+        </div>
+
+        <!-- 加载状态 -->
+        <div class="loading" id="loading">
+            <div class="pulse">🔍 正在搜索微信文章...</div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="status-card">
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-value" id="uptime-value">--</div>
+                    <div class="stat-label">运行时间</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="cache-value">--</div>
+                    <div class="stat-label">缓存条数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="searches-value">0</div>
+                    <div class="stat-label">搜索次数</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let searchCount = 0;
+        const serverUrl = window.location.origin;
+        
+        // DOM元素
+        const elements = {
+            searchForm: document.getElementById('search-form'),
+            queryInput: document.getElementById('query-input'),
+            maxResults: document.getElementById('max-results'),
+            timeFilter: document.getElementById('time-filter'),
+            searchBtn: document.getElementById('search-btn'),
+            loading: document.getElementById('loading'),
+            resultsCard: document.getElementById('results-card'),
+            resultsTitle: document.getElementById('results-title'),
+            resultsMeta: document.getElementById('results-meta'),
+            resultsContainer: document.getElementById('results-container'),
+            serverUrlSpan: document.getElementById('server-url'),
+            serviceStatus: document.getElementById('service-status'),
+            serviceText: document.getElementById('service-text'),
+            browserStatus: document.getElementById('browser-status'),
+            browserText: document.getElementById('browser-text'),
+            uptimeValue: document.getElementById('uptime-value'),
+            cacheValue: document.getElementById('cache-value'),
+            searchesValue: document.getElementById('searches-value')
+        };
+
+        // 初始化
+        function init() {
+            elements.serverUrlSpan.textContent = serverUrl;
+            
+            // 绑定事件
+            elements.searchForm.addEventListener('submit', handleSearch);
+            elements.queryInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch(e);
+                }
+            });
+
+            // 检查服务状态
+            checkServiceStatus();
+            
+            // 定期更新状态
+            setInterval(updateStats, 10000); // 每10秒更新一次
+        }
+
+        // 检查服务状态
+        async function checkServiceStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                
+                // 更新服务状态
+                elements.serviceStatus.className = 'status-indicator';
+                elements.serviceText.textContent = data.status === 'ok' ? '正常' : '异常';
+                
+                // 更新浏览器状态
+                const browserClass = data.browser_status === 'running' ? '' : 
+                                   data.browser_status === 'stopped' ? 'warning' : 'error';
+                elements.browserStatus.className = `status-indicator ${browserClass}`;
+                elements.browserText.textContent = {
+                    'running': '运行中',
+                    'stopped': '已停止',
+                    'error': '错误'
+                }[data.browser_status] || '未知';
+                
+                // 更新运行时间
+                elements.uptimeValue.textContent = formatUptime(data.uptime);
+                
+            } catch (error) {
+                console.error('检查服务状态失败:', error);
+                elements.serviceStatus.className = 'status-indicator error';
+                elements.serviceText.textContent = '连接失败';
+                elements.browserStatus.className = 'status-indicator error';
+                elements.browserText.textContent = '未知';
+            }
+        }
+
+        // 更新统计信息
+        async function updateStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+                
+                elements.uptimeValue.textContent = formatUptime(data.uptime);
+                elements.cacheValue.textContent = data.cache_size;
+                
+            } catch (error) {
+                console.error('更新统计信息失败:', error);
+            }
+        }
+
+        // 格式化运行时间
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        // 处理搜索
+        async function handleSearch(e) {
+            e.preventDefault();
+            
+            const query = elements.queryInput.value.trim();
+            if (!query) {
+                alert('请输入搜索关键词');
+                return;
+            }
+
+            // 显示加载状态
+            setLoading(true);
+            elements.resultsCard.style.display = 'none';
+
+            try {
+                const requestData = {
+                    query: query,
+                    max_results: parseInt(elements.maxResults.value),
+                    time_filter: elements.timeFilter.value || null,
+                    use_cache: true
+                };
+
+                const response = await fetch('/search_articles', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`搜索失败: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+                
+                // 更新搜索次数
+                searchCount++;
+                elements.searchesValue.textContent = searchCount;
+
+            } catch (error) {
+                console.error('搜索错误:', error);
+                showError(`搜索失败: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 显示搜索结果
+        function displayResults(data) {
+            const { articles, total_count, search_time, query, timestamp } = data;
+
+            // 更新结果标题和元信息
+            elements.resultsTitle.textContent = `"${query}" 的搜索结果`;
+            elements.resultsMeta.innerHTML = `
+                找到 <strong>${total_count}</strong> 篇文章，
+                耗时 <strong>${search_time}s</strong>，
+                搜索时间: ${new Date(timestamp).toLocaleString()}
+            `;
+
+            // 清空结果容器
+            elements.resultsContainer.innerHTML = '';
+
+            if (articles.length === 0) {
+                elements.resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📄</div>
+                        <h3>未找到相关文章</h3>
+                        <p>尝试使用其他关键词或调整搜索条件</p>
+                    </div>
+                `;
+            } else {
+                articles.forEach((article, index) => {
+                    const articleElement = createArticleElement(article, index);
+                    elements.resultsContainer.appendChild(articleElement);
+                });
+            }
+
+            // 显示结果卡片
+            elements.resultsCard.style.display = 'block';
+            elements.resultsCard.classList.add('fade-in');
+        }
+
+        // 创建文章元素
+        function createArticleElement(article, index) {
+            const div = document.createElement('div');
+            div.className = 'article-item fade-in';
+            div.style.animationDelay = `${index * 0.1}s`;
+            
+            div.innerHTML = `
+                <div class="article-title">
+                    <a href="${article.url}" target="_blank" rel="noopener noreferrer">
+                        ${escapeHtml(article.title)}
+                    </a>
+                </div>
+                <div class="article-meta">
+                    <span class="article-source">${escapeHtml(article.source)}</span>
+                    <span>📅 ${escapeHtml(article.date)}</span>
+                </div>
+                ${article.snippet ? `<div class="article-snippet">${escapeHtml(article.snippet)}</div>` : ''}
+            `;
+            
+            return div;
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            elements.resultsContainer.innerHTML = `
+                <div class="error-message">
+                    <strong>❌ 错误:</strong> ${escapeHtml(message)}
+                </div>
+            `;
+            elements.resultsCard.style.display = 'block';
+        }
+
+        // 设置加载状态
+        function setLoading(isLoading) {
+            if (isLoading) {
+                elements.loading.classList.add('show');
+                elements.searchBtn.disabled = true;
+                elements.searchBtn.textContent = '🔍 搜索中...';
+            } else {
+                elements.loading.classList.remove('show');
+                elements.searchBtn.disabled = false;
+                elements.searchBtn.textContent = '🔍 搜索';
+            }
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

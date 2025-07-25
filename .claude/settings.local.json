@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(pip install:*)",
+      "mcp__playwright-mcp__browser_navigate",
+      "mcp__playwright-mcp__browser_evaluate",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
