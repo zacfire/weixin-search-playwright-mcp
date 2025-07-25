@@ -55,7 +55,16 @@ class MCPServer:
         result = {
             "protocolVersion": "2025-06-18",
             "capabilities": {
-                "tools": {}
+                "tools": {
+                    "listChanged": False
+                },
+                "resources": {
+                    "subscribe": False,
+                    "listChanged": False
+                },
+                "prompts": {
+                    "listChanged": False
+                }
             },
             "serverInfo": {
                 "name": "wechat-article-search",
@@ -152,23 +161,51 @@ class MCPServer:
                 "message": f"未知工具: {tool_name}"
             })
             
+    async def handle_list_resources(self, request_id: int, params: Dict[str, Any]):
+        """处理资源列表请求"""
+        self.send_response(request_id, {"resources": []})
+        
+    async def handle_list_prompts(self, request_id: int, params: Dict[str, Any]):
+        """处理提示词列表请求"""
+        self.send_response(request_id, {"prompts": []})
+        
+    async def handle_notifications_initialized(self):
+        """处理初始化完成通知"""
+        # 不需要响应，这是通知消息
+        pass
+            
     async def handle_request(self, message: Dict[str, Any]):
         """处理请求"""
         method = message.get("method")
         request_id = message.get("id")
         params = message.get("params", {})
         
+        # 处理通知消息（无需响应）
+        if method == "notifications/initialized":
+            await self.handle_notifications_initialized()
+            return
+        elif method and method.startswith("notifications/"):
+            # 忽略其他通知消息
+            return
+            
+        # 处理请求消息（需要响应）
         if method == "initialize":
             await self.handle_initialize(request_id, params)
         elif method == "tools/list":
             await self.handle_list_tools(request_id, params)
         elif method == "tools/call":
             await self.handle_call_tool(request_id, params)
+        elif method == "resources/list":
+            await self.handle_list_resources(request_id, params)
+        elif method == "prompts/list":
+            await self.handle_list_prompts(request_id, params)
         else:
-            self.send_response(request_id, None, {
-                "code": -32601,
-                "message": f"未知方法: {method}"
-            })
+            # 对于未知方法，只有在有 request_id 时才响应
+            if request_id is not None:
+                self.send_response(request_id, None, {
+                    "code": -32601,
+                    "message": f"未知方法: {method}"
+                })
 
 
 async def main():
