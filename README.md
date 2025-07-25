@@ -18,7 +18,7 @@ playwright install chromium
 ```
 
 ### 2. MCP 已自动配置
-Claude Desktop 配置文件已更新，重启 Claude Desktop 即可使用。
+Claude Desktop 配置文件已更新，使用完整 Python 路径避免环境问题。
 
 ### 3. 使用方式
 ```
@@ -42,8 +42,8 @@ python test_search.py --search
 ## 🐛 故障排除
 
 1. **MCP 连接失败**: 重启 Claude Desktop
-2. **搜索无结果**: 检查网络连接和关键词
-3. **依赖问题**: 确保已安装 Playwright: `playwright install chromium`
+2. **Python 路径错误**: 确保配置使用完整路径如 `/Users/zac/miniconda3/bin/python`
+3. **搜索无结果**: 检查网络连接和关键词
 
 ---
 
